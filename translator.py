@@ -8,7 +8,7 @@ import pygame
 import os
 import time
 
-
+recogizer = sr.Recognizer()
 pygame.mixer.init()
 
 def make_circle(img_path, size=(40, 40)):
@@ -58,7 +58,9 @@ class translator(ctk.CTk):
         text = self.input_box.get("0.0", "end").strip()
         if not text:
             self.input_box.insert("0.0", self.placeholder)
-            self.input_box.configure(text_color="gray")    
+            self.input_box.configure(text_color="gray")   
+
+#-----------------------------------------------------------------------------------------------------------------------
 
     def framess(self):
 
@@ -72,16 +74,19 @@ class translator(ctk.CTk):
         self.button_frame.pack_propagate(False)
         
         self.trans_btn = ctk.CTkButton(self.button_frame,text="Translate",corner_radius=10,height=40,font=ctk.CTkFont(size=14, weight="bold"),fg_color="#2D7CC1",hover_color="#1F5F99",command=self.translate)
-        self.trans_btn.pack(side='left',padx=5,pady=5)
+        self.trans_btn.pack(side='left',padx=5,pady=3)
 
         self.img = ctk.CTkImage(light_image=make_circle("download.png"), size=(30, 30))
         self.listen_btn = ctk.CTkButton(self.button_frame,image=self.img,text="",fg_color="#2D7CC1",hover_color="#1F5F99",command=self.start_speaking)
-        self.listen_btn.pack(side='left',padx=5,pady=5)
+        self.listen_btn.pack(side='left',padx=5,pady=3)
+
+        self.img2 =  ctk.CTkImage(light_image=make_circle("mic.png"),size=(30,30))
+        self.speak_btn = ctk.CTkButton(self.button_frame,image=self.img2,text="",fg_color="#2D7CC1",hover_color="#1F5F99",command=self.speak_text)
+        self.speak_btn.pack(side='left',padx=5,pady=3)
 
         self.lang_var = ctk.StringVar(value="Select Language")
-
         self.lang_dropdown = ctk.CTkOptionMenu(self.button_frame,values=['Select Language'] + list(LANGUAGES.keys()),variable=self.lang_var,width=180,height=40,corner_radius=10)
-        self.lang_dropdown.pack(side='right',padx=5,pady=5)
+        self.lang_dropdown.pack(side='right',padx=5,pady=3)
 
         #----------------------- Main frame-----------------------------------------------
         self.main_frame = ctk.CTkFrame(self)
@@ -128,13 +133,15 @@ class translator(ctk.CTk):
         self.output_box.insert("0.0", "Translated Text appears here..")
         self.output_box.configure(state="disabled")
 
+#-----------------------------------------------------------------------------------------------------------------------
+
     def translate(self):
         
         text = self.input_box.get("0.0","end").strip()
 
-        if not text:
+        if not text or text == self.placeholder:
             return
-
+        
         target_language_name = self.lang_var.get()
 
         if target_language_name == "Select Language":
@@ -150,8 +157,12 @@ class translator(ctk.CTk):
  
         self.output_box.configure(state="disabled")
 
+#-----------------------------------------------------------------------------------------------------------------------
+
     def start_speaking(self):
         threading.Thread(target=self.listen_text, daemon=True).start()
+
+#-----------------------------------------------------------------------------------------------------------------------
 
     def listen_text(self):
 
@@ -187,6 +198,35 @@ class translator(ctk.CTk):
         except Exception as e:
             print("Speech Error:", e)
 
-        
+#-----------------------------------------------------------------------------------------------------------------------
+   
+    def speak_text(self):
+        recognizer = sr.Recognizer()
+
+        try:
+            with sr.Microphone(device_index=1) as source:
+                print("Listening...")
+
+                recognizer.adjust_for_ambient_noise(source, duration=1)
+
+                audio = recognizer.listen(source,timeout=3,phrase_time_limit=5)
+
+            print("Processing...")
+            text = recognizer.recognize_google(audio)
+            print("You said:", text)
+
+            self.input_box.delete("0.0", "end")
+            self.input_box.insert("0.0", text)
+            self.input_box.configure(text_color="white")
+
+        except sr.WaitTimeoutError:
+            print("You didn’t start speaking")
+
+        except sr.UnknownValueError:
+            print("Could not understand")
+
+        except Exception as e:
+            print("Error:", e)  
+
 app = translator()
 app.mainloop()        
