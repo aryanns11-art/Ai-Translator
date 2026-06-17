@@ -1,6 +1,28 @@
 import customtkinter as ctk
 from PIL import Image, ImageDraw
 from deep_translator import GoogleTranslator
+import speech_recognition as sr
+from gtts import gTTS
+import threading
+import pygame
+import os
+import time
+
+
+pygame.mixer.init()
+
+def make_circle(img_path, size=(40, 40)):
+    img = Image.open(img_path).convert("RGBA")
+    img = img.resize(size)
+
+    mask = Image.new("L", size, 0)
+    draw = ImageDraw.Draw(mask)
+    draw.ellipse((0, 0, size[0], size[1]), fill=255)
+
+    result = Image.new("RGBA", size)
+    result.paste(img, (0, 0), mask)
+
+    return result
 
 
 LANGUAGES = {
@@ -51,6 +73,10 @@ class translator(ctk.CTk):
         
         self.trans_btn = ctk.CTkButton(self.button_frame,text="Translate",corner_radius=10,height=40,font=ctk.CTkFont(size=14, weight="bold"),fg_color="#2D7CC1",hover_color="#1F5F99",command=self.translate)
         self.trans_btn.pack(side='left',padx=5,pady=5)
+
+        self.img = ctk.CTkImage(light_image=make_circle("download.png"), size=(30, 30))
+        self.listen_btn = ctk.CTkButton(self.button_frame,image=self.img,text="",fg_color="#2D7CC1",hover_color="#1F5F99",command=self.start_speaking)
+        self.listen_btn.pack(side='left',padx=5,pady=5)
 
         self.lang_var = ctk.StringVar(value="Select Language")
 
@@ -104,7 +130,7 @@ class translator(ctk.CTk):
 
     def translate(self):
         
-        text = self.input_box.get("0.0","end")
+        text = self.input_box.get("0.0","end").strip()
 
         if not text:
             return
@@ -122,8 +148,45 @@ class translator(ctk.CTk):
         self.output_box.delete("0.0","end")
         self.output_box.insert("0.0",translated_text)
  
-        self.output_box.configure(state="disabled")  
-        
+        self.output_box.configure(state="disabled")
+
+    def start_speaking(self):
+        threading.Thread(target=self.listen_text, daemon=True).start()
+
+    def listen_text(self):
+
+        text = self.output_box.get("0.0", "end").strip()
+
+        if not text or text == "Translated Text appears here":
+            return
+
+        try:
+            # Get selected language
+            target_language_name = self.lang_var.get()
+            target_code = LANGUAGES.get(target_language_name, "en")
+
+            # Convert text → speech file
+            tts = gTTS(text=text, lang=target_code, slow=False)
+            filename = f"translated_audio_{int(time.time())}.mp3"
+            tts.save(filename)
+
+            # Play using pygame
+            pygame.mixer.music.load(filename)
+            pygame.mixer.music.play()
+
+            # Wait until finished
+            while pygame.mixer.music.get_busy():
+                pygame.time.Clock().tick(10)
+
+            pygame.mixer.music.stop()
+
+            # Remove temp file
+            if os.path.exists(filename):
+                os.remove(filename)
+
+        except Exception as e:
+            print("Speech Error:", e)
+
         
 app = translator()
 app.mainloop()        
