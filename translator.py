@@ -25,22 +25,36 @@ class translator(ctk.CTk):
 
         self.framess()
 
+    def clear_placeholder(self, event):
+        text = self.input_box.get("0.0", "end").strip()
+        if text == self.placeholder:
+            self.input_box.delete("0.0", "end")
+            self.input_box.configure(text_color="white")
+
+
+    def add_placeholder(self, event):
+        text = self.input_box.get("0.0", "end").strip()
+        if not text:
+            self.input_box.insert("0.0", self.placeholder)
+            self.input_box.configure(text_color="gray")    
+
     def framess(self):
 
-        top_label = ctk.CTkLabel(self,text="Translator App")
+        top_label = ctk.CTkLabel(self,text="🌐 My Translator",font=ctk.CTkFont(family="Segoe UI",size=24))
         top_label.pack(anchor='nw',pady=5)
     
         #---------------------------Button Frame--------------------------------------------------------
 
-        self.button_frame = ctk.CTkFrame(self,height=70,fg_color="#ceebfd")
+        self.button_frame = ctk.CTkFrame(self,height=70,fg_color="#e6f2ff")
         self.button_frame.pack(fill='x',pady=2)
         self.button_frame.pack_propagate(False)
-
-        self.trans_btn = ctk.CTkButton(self.button_frame,text="Translate",command=self.translate)
+        
+        self.trans_btn = ctk.CTkButton(self.button_frame,text="Translate",corner_radius=10,height=40,font=ctk.CTkFont(size=14, weight="bold"),fg_color="#2D7CC1",hover_color="#1F5F99",command=self.translate)
         self.trans_btn.pack(side='left',padx=5,pady=5)
 
         self.lang_var = ctk.StringVar(value="Select Language")
-        self.lang_dropdown = ctk.CTkOptionMenu(self.button_frame,values=['Select Language']+list(LANGUAGES.keys()),variable = self.lang_var, width=150)
+
+        self.lang_dropdown = ctk.CTkOptionMenu(self.button_frame,values=['Select Language'] + list(LANGUAGES.keys()),variable=self.lang_var,width=180,height=40,corner_radius=10)
         self.lang_dropdown.pack(side='right',padx=5,pady=5)
 
         #----------------------- Main frame-----------------------------------------------
@@ -62,19 +76,27 @@ class translator(ctk.CTk):
         self.right_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
 
         #-------------------------------TextBoxes---------------------------------------------------------------------------------
-        self.input_box_label = ctk.CTkLabel(self.left_frame,text="Enter text: ")
+        
+        
+        self.input_box_label = ctk.CTkLabel(self.left_frame,text=" Raw Text",font=ctk.CTkFont(size=14, weight="bold"))
         self.input_box_label.pack(anchor='nw',pady=2)
 
-
-
-        self.input_box = ctk.CTkTextbox(self.left_frame,height=180)
+        self.placeholder = "Enter text to translate..."
+        
+        self.input_box = ctk.CTkTextbox(self.left_frame,corner_radius=10,border_width=2)
         self.input_box.pack(fill="both",expand=True,padx=5,pady=5)
-        self.input_box.insert("0.0", "Enter text to translate..")
 
-        self.output_box_label = ctk.CTkLabel(self.right_frame, text="Translated Text:")
+        
+        self.input_box.insert("0.0", self.placeholder)
+        self.input_box.configure(text_color="gray")
+        
+        self.input_box.bind("<FocusIn>", self.clear_placeholder)
+        self.input_box.bind("<FocusOut>", self.add_placeholder)
+        
+        self.output_box_label = ctk.CTkLabel(self.right_frame,text=" Translated Text",font=ctk.CTkFont(size=14, weight="bold"))
         self.output_box_label.pack(anchor='nw',pady=2)
         
-        self.output_box = ctk.CTkTextbox(self.right_frame, height=180)
+        self.output_box = ctk.CTkTextbox(self.right_frame,corner_radius=10,border_width=2)
         self.output_box.pack(fill="both", expand=True, padx=5, pady=5)
 
         self.output_box.insert("0.0", "Translated Text appears here..")
