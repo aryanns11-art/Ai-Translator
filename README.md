@@ -1,4 +1,7 @@
-🌐 Voice Translator Desktop App
+# 🌐 Voice Translator Desktop App
+
+#Python #TranslatorApp #SpeechRecognition #TextToSpeech #CustomTkinter #GUI #AI #DeepTranslator #Pydub #FFmpeg #DesktopApp #OpenSource #VoiceTranslator
+
 A modern desktop Translator application built using Python and CustomTkinter.
 
 This application allows users to translate text into multiple languages, convert speech to text using a microphone, and listen to translated text with text-to-speech. It provides a clean and user-friendly interface with support for several popular languages.
