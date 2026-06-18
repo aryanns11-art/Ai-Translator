@@ -7,6 +7,9 @@ import threading
 import pygame
 import os
 import time
+from pydub import AudioSegment
+from tkinter import filedialog
+
 
 recogizer = sr.Recognizer()
 pygame.mixer.init()
@@ -46,6 +49,7 @@ class translator(ctk.CTk):
         self.geometry("600x600")
 
         self.framess()
+        self.selected_file_path = ""
 
     def clear_placeholder(self, event):
         text = self.input_box.get("0.0", "end").strip()
@@ -58,7 +62,73 @@ class translator(ctk.CTk):
         text = self.input_box.get("0.0", "end").strip()
         if not text:
             self.input_box.insert("0.0", self.placeholder)
-            self.input_box.configure(text_color="gray")   
+            self.input_box.configure(text_color="gray")
+
+    def browse_file(self):
+        file_path = filedialog.askopenfilename(
+            title="Select an Audio File",
+            filetypes=[("Audio Files", "*.mp3 *.wav"), ("All Files", "*.*")]
+        )
+        if file_path:
+            self.selected_file_path = file_path
+            filename = os.path.basename(file_path)
+            self.file_label.configure(text=filename, text_color="white")
+    
+    def start_processing(self):
+        if not self.selected_file_path:
+            self.file_label.configure(text="Please select a file first!", text_color="#dc3545")
+            return
+        threading.Thread(target=self.process_audio_logic, daemon=True).start()
+
+    def process_audio_logic(self):
+        self.trans_btn.configure(text="Processing Audio...", state="disabled")
+        recognizer = sr.Recognizer()
+        temp_wav_path = "converted_temp.wav"
+        target_file = self.selected_file_path
+
+        try:
+            # 1. MP3 To WAV Conversion handling via pydub
+            if self.selected_file_path.lower().endswith(".mp3"):
+                self.trans_btn.configure(text="Converting MP3 to WAV...")
+                sound = AudioSegment.from_mp3(self.selected_file_path)
+                sound.export(temp_wav_path, format="wav")
+                target_file = temp_wav_path
+
+            # 2. Audio File Transcription
+            self.trans_btn.configure(text="Transcribing Speech...")
+            with sr.AudioFile(target_file) as source:
+                recognizer.adjust_for_ambient_noise(source)
+                audio_data = recognizer.record(source)
+            
+            original_text = recognizer.recognize_google(audio_data)
+            self.update_text_box(self.input_box, original_text, disable=False)
+            
+
+            # 3. Text Translation
+            self.trans_btn.configure(text="Translating Text...")
+            target_lang_name = self.lang_dropdown.get()
+            target_code = LANGUAGES[target_lang_name]
+            
+            translated_text = GoogleTranslator(source='auto', target=target_code).translate(original_text)
+            self.update_text_box(self.output_box, translated_text, disable=True)
+
+        except sr.UnknownValueError:
+            self.update_text_box(self.input_box, "Error: Engine could not decipher audio speech.")
+            
+        except Exception as e:
+            if "ffmpeg" in str(e).lower():
+                self.update_text_box(self.input_box, "FFmpeg not found! Install FFmpeg to process MP3 files.", disable=False)
+            else:
+                self.update_text_box(self.input_box, f"Error: {str(e)}", disable=False)
+    
+        finally:
+            # Clean up the temporary wav translation file if it was generated
+            if os.path.exists(temp_wav_path):
+                try:
+                    os.remove(temp_wav_path)
+                except:
+                    pass
+            self.trans_btn.configure(text="🔄 Transcribe & Translate", state="normal")
 
 #-----------------------------------------------------------------------------------------------------------------------
 
@@ -108,7 +178,6 @@ class translator(ctk.CTk):
 
         #-------------------------------TextBoxes---------------------------------------------------------------------------------
         
-        
         self.input_box_label = ctk.CTkLabel(self.left_frame,text=" Raw Text",font=ctk.CTkFont(size=14, weight="bold"))
         self.input_box_label.pack(anchor='nw',pady=2)
 
@@ -133,6 +202,20 @@ class translator(ctk.CTk):
         self.output_box.insert("0.0", "Translated Text appears here..")
         self.output_box.configure(state="disabled")
 
+        #---------------------------- Bottom FRame--------------------------------
+
+        self.bottom_frame = ctk.CTkFrame(self, fg_color="#e6f2ff")
+        self.bottom_frame.pack(fill="x", pady=5)
+
+        self.file_btn = ctk.CTkButton(self.bottom_frame, text="Select Audio", command=self.browse_file)
+        self.file_btn.pack(side='left', padx=5)
+
+        self.process_audio_btn = ctk.CTkButton(self.bottom_frame, text="Process Audio", command=self.start_processing)
+        self.process_audio_btn.pack(side='left', padx=5)
+
+        self.file_label = ctk.CTkLabel(self.bottom_frame, text="No file selected...", text_color="gray")
+        self.file_label.pack(side='left', padx=10)
+        
 #-----------------------------------------------------------------------------------------------------------------------
 
     def translate(self):
@@ -161,6 +244,13 @@ class translator(ctk.CTk):
 
     def start_speaking(self):
         threading.Thread(target=self.listen_text, daemon=True).start()
+
+    def update_text_box(self, box, text, disable=True):
+        box.configure(state="normal")
+        box.delete("0.0", "end")
+        box.insert("0.0", text)
+        if disable:
+            box.configure(state="disabled")
 
 #-----------------------------------------------------------------------------------------------------------------------
 
